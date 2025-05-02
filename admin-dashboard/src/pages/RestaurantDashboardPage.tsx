@@ -1,13 +1,35 @@
-import { act, useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "../components/restaurant-dashboard/Sidebar";
 import OverviewContent from "../components/restaurant-dashboard/OverviewContent";
 import MenuContent from "../components/restaurant-dashboard/MenuContent";
 import OrdersContent from "@/components/restaurant-dashboard/OrdersContent";
+import { getDashboardData } from "@/api/services/dashboardService";
+import { fetchDashboardDataStart, fetchDashboardDataSuccess, fetchDashboardDataFailure } from "@/redux/slices/restaurantSlice";
+import { RootState } from "@/redux/store";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "sonner";
 
 type ActiveSection = "overview" | "clients" | "users" | "orders" | "menu" | "settings" | "account";
 
 const RestaurantDashboardPage = () => {
   const [activeSection, setActiveSection] = useState<ActiveSection>("overview");
+  const dispatch = useDispatch();
+  const { dashboardData, loading, error } = useSelector((state: RootState) => state.restaurant);
+
+  useEffect(() => {
+    dispatch(fetchDashboardDataStart());
+    const fetchData = async () => {
+      try {
+        const data = await getDashboardData();
+        dispatch(fetchDashboardDataSuccess(data));
+      } catch (error: any) {
+        const errorMessage = error.response?.data?.message || 'Failed to load dashboard data';
+        dispatch(fetchDashboardDataFailure(errorMessage));
+        toast.error(errorMessage);
+      }
+    };
+    fetchData();
+  }, [dispatch]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">

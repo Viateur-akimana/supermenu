@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,17 +9,21 @@ import { MenuItem } from "../../pages/CreateRestaurantPage";
 interface CreateMenuProps {
   restaurantData: {
     menuItems: MenuItem[];
+    images: File[];
   };
-  updateRestaurantData: (data: any) => void;
+  updateRestaurantData: (data: Partial<{ menuItems: MenuItem[]; images: File[] }>) => void;
   onBack: () => void;
+  onSubmit: () => void;
+  loading: boolean;
 }
 
 const CreateMenu = ({
   restaurantData,
   updateRestaurantData,
-  onBack
+  onBack,
+  onSubmit,
+  loading,
 }: CreateMenuProps) => {
-  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<string>("Drink");
   const [newMenuItem, setNewMenuItem] = useState<MenuItem>({
     id: "",
@@ -28,115 +31,105 @@ const CreateMenu = ({
     price: "",
     description: "",
     category: activeCategory,
-    image: undefined
+    image: undefined,
   });
-  
-  // Categories for menu items
   const categories = ["Drink", "Starter", "Appetizer", "Dessert", "Main"];
-  
+
   const handleCategoryChange = (category: string) => {
     setActiveCategory(category);
-    setNewMenuItem(prev => ({ ...prev, category }));
+    setNewMenuItem((prev) => ({ ...prev, category }));
   };
-  
+
   const handleMenuItemChange = (field: keyof MenuItem, value: string) => {
-    setNewMenuItem(prev => ({ ...prev, [field]: value }));
+    setNewMenuItem((prev) => ({ ...prev, [field]: value }));
   };
-  
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setNewMenuItem(prev => ({
+      setNewMenuItem((prev) => ({
         ...prev,
-        image: e.target.files![0]
+        image: e.target.files![0],
       }));
     }
   };
-  
+
   const addMenuItem = () => {
-    // Validate required fields
     if (!newMenuItem.name.trim() || !newMenuItem.price.trim()) {
       toast.error("Please enter name and price");
       return;
     }
-    
-    // Add new menu item
+
     const menuItem = {
       ...newMenuItem,
-      id: Date.now().toString() // Generate a simple ID
+      id: Date.now().toString(),
     };
-    
+
     updateRestaurantData({
-      menuItems: [...restaurantData.menuItems, menuItem]
+      menuItems: [...restaurantData.menuItems, menuItem],
     });
-    
-    // Reset form
+
     setNewMenuItem({
       id: "",
       name: "",
       price: "",
       description: "",
       category: activeCategory,
-      image: undefined
+      image: undefined,
     });
-    
+
     toast.success("Menu item added");
   };
-  
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check if we have at least one menu item
+
     if (restaurantData.menuItems.length === 0) {
       toast.error("Please add at least one menu item");
       return;
     }
-    
-    // Here you would typically submit the form to your backend
-    toast.success("Restaurant profile created successfully!");
-    
-    // Navigate to the dashboard after successfully creating the restaurant
-    setTimeout(() => {
-      navigate("/restaurant-dashboard");
-    }, 1000);
+
+    onSubmit(); // Trigger the onSubmit prop to dispatch API call
   };
-  
+
   return (
     <div>
       <div className="flex space-x-2 mb-6">
-        {categories.map(category => (
+        {categories.map((category) => (
           <button
             key={category}
             onClick={() => handleCategoryChange(category)}
-            className={`px-4 py-2 rounded-md ${
-              activeCategory === category 
-                ? "bg-supamenu-orange text-white" 
-                : "bg-white text-gray-500 hover:bg-gray-100"
-            }`}
+            className={`px-4 py-2 rounded-md ${activeCategory === category
+              ? "bg-supamenu-orange text-white"
+              : "bg-white text-gray-500 hover:bg-gray-100"
+              }`}
+            disabled={loading}
           >
             {category}
           </button>
         ))}
       </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
+
+      <form onSubmit={handleFormSubmit} className="space-y-6">
         <div>
           <label className="block text-sm font-medium mb-1">Name</label>
           <Input
             placeholder="Menu Name"
             value={newMenuItem.name}
             onChange={(e) => handleMenuItemChange("name", e.target.value)}
+            disabled={loading}
           />
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium mb-1">Price</label>
           <Input
             placeholder="RWF"
             value={newMenuItem.price}
             onChange={(e) => handleMenuItemChange("price", e.target.value)}
+            disabled={loading}
           />
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium mb-1">Menu description</label>
           <Textarea
@@ -144,9 +137,10 @@ const CreateMenu = ({
             value={newMenuItem.description}
             onChange={(e) => handleMenuItemChange("description", e.target.value)}
             className="min-h-[100px]"
+            disabled={loading}
           />
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium mb-1">Image</label>
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -156,21 +150,23 @@ const CreateMenu = ({
               className="hidden"
               accept="image/*"
               onChange={handleImageUpload}
+              disabled={loading}
             />
             <label
               htmlFor="menu-image-upload"
-              className="cursor-pointer flex flex-col items-center justify-center"
+              className={`cursor-pointer flex flex-col items-center justify-center ${loading ? "opacity-50 cursor-not-allowed" : ""
+                }`}
             >
               <Upload size={36} className="text-gray-400 mb-2" />
               <span className="text-gray-600">Upload Image</span>
             </label>
           </div>
-          
+
           {newMenuItem.image && (
             <div className="mt-2">
               <p className="text-sm font-medium mb-2">Selected Image:</p>
               <div className="w-20 h-20 rounded-md bg-gray-100 relative overflow-hidden">
-                <img 
+                <img
                   src={URL.createObjectURL(newMenuItem.image)}
                   alt="Menu item preview"
                   className="w-full h-full object-cover"
@@ -179,55 +175,56 @@ const CreateMenu = ({
             </div>
           )}
         </div>
-        
+
         <div className="flex justify-between">
-          <Button 
-            type="button" 
-            variant="outline" 
+          <Button
+            type="button"
+            variant="outline"
             onClick={addMenuItem}
             className="flex items-center gap-2"
+            disabled={loading}
           >
             <span>Add more</span>
             <Plus size={16} />
           </Button>
-          
+
           <div className="flex gap-4">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={onBack}
-            >
+            <Button type="button" variant="outline" onClick={onBack} disabled={loading}>
               Back
             </Button>
-            
-            <Button type="submit" className="bg-supamenu-orange hover:bg-supamenu-orange/90">
-              Submit
+
+            <Button
+              type="submit"
+              className="bg-supamenu-orange hover:bg-supamenu-orange/90"
+              disabled={loading}
+            >
+              {loading ? "Submitting..." : "Submit"}
             </Button>
           </div>
         </div>
       </form>
-      
+
       {/* Display added menu items */}
       {restaurantData.menuItems.length > 0 && (
         <div className="mt-8">
           <h3 className="text-lg font-semibold mb-4">Added Menu Items</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {restaurantData.menuItems.map((item) => (
-              <div 
-                key={item.id} 
+              <div
+                key={item.id}
                 className="border border-gray-200 rounded-lg p-4 flex items-start"
               >
                 {item.image && (
                   <div className="w-16 h-16 rounded-md overflow-hidden mr-4 flex-shrink-0">
-                    <img 
+                    <img
                       src={URL.createObjectURL(item.image)}
                       alt={item.name}
                       className="w-full h-full object-cover"
                     />
                   </div>
                 )}
-                
+
                 <div>
                   <div className="flex items-center">
                     <span className="text-sm font-medium">{item.name}</span>

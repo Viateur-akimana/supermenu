@@ -108,11 +108,11 @@ const RestaurantInformation = ({
           <Input
             id="location"
             placeholder="Restaurant Location"
-            value={restaurantData.name}
+            value={restaurantData.location}
             onChange={handleChange}
             className={`${errors.location ? "border-red-500" : ""}`}
           />
-          {errors.name && <p className="text-sm text-red-500 mt-1">{errors.location}</p>}
+          {errors.location && <p className="text-sm text-red-500 mt-1">{errors.location}</p>}
         </div>
 
         <div>

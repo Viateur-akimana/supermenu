@@ -1,9 +1,12 @@
-
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import AuthLayout from "../components/AuthLayout";
 import PasswordInput from "../components/PasswordInput";
 import { toast } from "sonner";
+import { RootState } from "@/redux/store";
+import { login } from "@/api/services/authService";
+import { loginFailure, loginStart, loginSuccess } from "@/redux/slices/authSlice";
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
@@ -11,17 +14,28 @@ const LoginPage = () => {
     password: "",
   });
 
+  const dispatch = useDispatch();
+  const { loading, error } = useSelector((state: RootState) => state.auth);
+  const navigate = useNavigate();
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you would authenticate with your backend
-    console.log("Login attempted:", formData);
-    toast.success("Login successful!");
-    // Redirect to dashboard or home
+    dispatch(loginStart());
+    try {
+      const response = await login(formData);
+      dispatch(loginSuccess({ user: response.user, token: response.token }));
+      toast.success("Login successful!");
+      navigate("/dashboard");
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Login failed";
+      dispatch(loginFailure(errorMessage));
+      toast.error(errorMessage);
+    }
   };
 
   const handleReset = () => {
@@ -33,7 +47,7 @@ const LoginPage = () => {
       <div className="text-center text-gray-400 mb-2">Welcome</div>
       <h1 className="auth-title">Login to SupaMenu</h1>
       <p className="text-center text-gray-400 mb-6">Enter your email and password below</p>
-      
+      {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="email" className="block text-sm text-gray-500 mb-1">
@@ -47,6 +61,7 @@ const LoginPage = () => {
             value={formData.email}
             onChange={handleChange}
             required
+            disabled={loading}
           />
         </div>
 
@@ -67,8 +82,8 @@ const LoginPage = () => {
           />
         </div>
 
-        <button type="submit" className="w-full supamenu-button">
-          Log in
+        <button type="submit" className="w-full supamenu-button" disabled={loading}>
+          {loading ? "Logging in..." : "Log in"}
         </button>
 
         <div className="text-center text-sm text-gray-500">
@@ -80,10 +95,11 @@ const LoginPage = () => {
 
         <div className="text-center text-xs text-gray-400">
           <span>Forgot your password/login? </span>
-          <button 
+          <button
             type="button"
             onClick={handleReset}
             className="text-blue-500 hover:underline"
+            disabled={loading}
           >
             RESET
           </button>
