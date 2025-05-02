@@ -1,40 +1,37 @@
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { RootState } from './redux/store';
-import Dashboard from './pages/Dashboard';
-import Orders from './pages/Orders';
-import Login from './pages/Login';
-import Sidebar from './components/sidebar';
 
-const App: React.FC = () => {
-  const { token } = useSelector((state: RootState) => state.auth);
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
+import CreateRestaurantPage from "./pages/CreateRestaurantPage";
+import RestaurantDashboardPage from "./pages/RestaurantDashboardPage";
+import NotFound from "./pages/NotFound";
+import OrdersContent from "./components/restaurant-dashboard/OrdersContent";
+import HomePage from "./pages/Homepage";
 
-  return (
-    <Router>
-      <div className="flex">
-        {token ? <Sidebar /> : null}
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
         <Routes>
-          <Route
-            path="/login"
-            element={token ? <Navigate to="/" /> : <Login />}
-          />
-          <Route
-            path="/"
-            element={token ? <Dashboard /> : <Navigate to="/login" />}
-          />
-          <Route
-            path="/orders"
-            element={token ? <Orders /> : <Navigate to="/login" />}
-          />
-          <Route
-            path="*"
-            element={<Navigate to={token ? "/" : "/login"} />}
-          />
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/create-restaurant" element={<CreateRestaurantPage />} />
+          <Route path="/restaurant-dashboard" element={<RestaurantDashboardPage />} />
+          <Route path="/orders" element={<OrdersContent />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
-      </div>
-    </Router>
-  );
-};
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
