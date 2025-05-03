@@ -53,7 +53,6 @@ interface MenuItem {
 interface RestaurantData {
   name: string;
   location: string;
-  completeName: string;
   contactNumber: string;
   ownerName: string;
   ownerEmail: string;
@@ -70,7 +69,6 @@ const CreateRestaurantPage = () => {
   const [restaurantData, setRestaurantData] = useState<RestaurantData>({
     name: "",
     location: "",
-    completeName: "",
     contactNumber: "",
     ownerName: "",
     ownerEmail: "",

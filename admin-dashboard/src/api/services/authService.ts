@@ -15,15 +15,8 @@ interface LoginData {
 }
 
 interface AuthResponse {
-    user: {
-        id: string;
-        firstName: string;
-        lastName: string;
-        email: string;
-        phone: string;
-        nationalId: string;
-    };
-    token: string;
+    accessToken: string;
+    role: "ADMIN" | "USER";
 }
 
 export const signup = async (data: SignupData): Promise<AuthResponse> => {
@@ -48,25 +41,8 @@ export const login = async (data: LoginData): Promise<AuthResponse> => {
             throw new Error('No data received from server');
         }
 
-        // Transform the API response to match our expected structure
-        const transformedResponse = {
-            user: {
-                id: response.data.user?.id || response.data.sub || '',
-                firstName: response.data.user?.firstName || '',
-                lastName: response.data.user?.lastName || '',
-                email: data.email,
-                phone: response.data.user?.phone || response.data.phoneNumber || '',
-                nationalId: response.data.user?.nationalId || ''
-            },
-            token: response.data.accessToken || response.data.token || ''
-        };
-
-        if (!transformedResponse.token) {
-            throw new Error('Authentication token missing in response');
-        }
-
-        console.log('Transformed login response:', transformedResponse);
-        return transformedResponse;
+    
+        return response.data;
     } catch (error: any) {
         console.error('Login error:', error);
 

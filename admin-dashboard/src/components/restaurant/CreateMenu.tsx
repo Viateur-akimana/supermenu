@@ -93,6 +93,12 @@ const CreateMenu = ({
     }
   };
 
+  const handleRestaurantImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      updateRestaurantData({ images: [e.target.files[0]] });
+    }
+  };
+
   const validateMenuItem = (): boolean => {
     const newErrors: Partial<Record<keyof MenuItem, string>> = {};
 

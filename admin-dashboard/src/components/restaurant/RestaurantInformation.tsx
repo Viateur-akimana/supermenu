@@ -7,7 +7,6 @@ interface RestaurantInformationProps {
   restaurantData: {
     name: string;
     location: string;
-    completeName: string;
     contactNumber: string;
     ownerName: string;
     ownerEmail: string;
@@ -41,10 +40,6 @@ const RestaurantInformation = ({
       newErrors.name = "Restaurant name is required";
     }
 
-
-    if (!restaurantData.completeName.trim()) {
-      newErrors.completeName = "Restaurant complete name is required";
-    }
     if (!restaurantData.location.trim()) {
       newErrors.name = "Restaurant location is required";
     }
@@ -94,16 +89,6 @@ const RestaurantInformation = ({
           {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name}</p>}
         </div>
 
-        <div>
-          <Input
-            id="completeName"
-            placeholder="Restaurant Complete Name"
-            value={restaurantData.completeName}
-            onChange={handleChange}
-            className={`${errors.completeName ? "border-red-500" : ""}`}
-          />
-          {errors.completeName && <p className="text-sm text-red-500 mt-1">{errors.completeName}</p>}
-        </div>
         <div>
           <Input
             id="location"

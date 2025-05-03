@@ -43,7 +43,6 @@ interface RestaurantResponse {
     id: string;
     name: string;
     location: string;
-    completeName: string;
     contactNumber: string;
     ownerName: string;
     ownerEmail: string;
@@ -63,7 +62,6 @@ interface ApiError {
 
 export const createRestaurant = async (data: {
     name: string;
-    completeName: string;
     location: string;
     contactNumber: string;
     ownerName: string;
@@ -83,40 +81,42 @@ export const createRestaurant = async (data: {
         const formData = new FormData();
         formData.append('name', data.name);
         formData.append('location', data.location);
-        formData.append('completeName', data.completeName);
         formData.append('contactNumber', data.contactNumber);
         formData.append('ownerName', data.ownerName);
         formData.append('ownerEmail', data.ownerEmail);
-        formData.append('ownerPhone', data.ownerPhone);
+        formData.append('ownerPhoneNumber', data.ownerPhone); // Change to match API expectation
         formData.append('restaurantType', data.restaurantType);
         formData.append('cuisineType', data.cuisineType);
-        if (typeof data.openingHours === 'object') {
-            formData.append('openingHours', JSON.stringify(data.openingHours));
-        } else {
-            formData.append('openingHours', data.openingHours.toString());
-        }
+        
+        // Format opening hours as a string instead of JSON
+        const openingHoursString = `${data.openingHours.from}-${data.openingHours.to}`;
+        formData.append('openingHours', openingHoursString);
 
-        // Handle restaurant images
+        // Handle restaurant images - change to singular "image" if only one is expected
         if (data.images && data.images.length > 0) {
-            data.images.forEach((image, index) => {
-                if (image.size > 5 * 1024 * 1024 || !image.type.startsWith('image/')) {
-                    throw new Error('Invalid image file: Size must be under 5MB and must be an image');
-                }
-                formData.append('images', image, `restaurant-image-${index}.${image.name.split('.').pop() || 'jpg'}`);
-            });
+            formData.append('image', data.images[0]); // Use singular 'image' instead of 'images'
         }
+        
+        // Update menu item format to use dot notation instead of bracket notation
         data.menuItems.forEach((item, index) => {
-            formData.append(`menuItems[${index}][name]`, item.name);
-            formData.append(`menuItems[${index}][price]`, item.price);
-            formData.append(`menuItems[${index}][description]`, item.description);
-            formData.append(`menuItems[${index}][category]`, item.category);
-            formData.append(`menuItems[${index}][id]`, item.id);
+            formData.append(`menuItems[${index}].name`, item.name);
+            formData.append(`menuItems[${index}].price`, item.price);
+            formData.append(`menuItems[${index}].description`, item.description);
+            
+            // Map your category to the expected API category format if needed
+            const categoryMap: Record<string, string> = {
+                DRINK: 'DRINK',
+                STARTER: 'STARTER',
+                APPETIZER: 'APPETIZER',
+                MAIN: 'MAIN',
+                DESSERT: 'DESSERT',
+               
+            };
+            const apiCategory = categoryMap[item.category] || item.category;
+            formData.append(`menuItems[${index}].category`, apiCategory);
 
             if (item.image) {
-                if (item.image.size > 5 * 1024 * 1024 || !item.image.type.startsWith('image/')) {
-                    throw new Error('Invalid menu item image: Size must be under 5MB and must be an image');
-                }
-                formData.append(`menuItems[${index}][image]`, item.image, `menu-item-${item.id}.${item.image.name.split('.').pop() || 'jpg'}`);
+                formData.append(`menuItems[${index}].image`, item.image);
             }
         });
 
@@ -145,7 +145,6 @@ export const updateRestaurant = async (id: string, data: Partial<RestaurantRespo
         // Handle basic fields
         if (data.name) formData.append('name', data.name);
         if (data.location) formData.append('location', data.location);
-        if (data.completeName) formData.append('completeName', data.completeName);
         if (data.contactNumber) formData.append('contactNumber', data.contactNumber);
         if (data.ownerName) formData.append('ownerName', data.ownerName);
         if (data.ownerEmail) formData.append('ownerEmail', data.ownerEmail);

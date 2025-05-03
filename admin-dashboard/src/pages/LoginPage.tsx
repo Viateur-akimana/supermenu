@@ -38,11 +38,10 @@ const LoginPage = () => {
       console.log('Login service response:', response);
 
       dispatch(loginSuccess({
-        user: response.user,
-        token: response.token
+        accessToken: response.accessToken
       }));
 
-      localStorage.setItem("token", response.token);
+      localStorage.setItem("token", response.accessToken);
       toast.success("Login successful!");
       navigate("/create-restaurant");
     } catch (error: any) {

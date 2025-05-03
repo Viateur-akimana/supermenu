@@ -31,12 +31,11 @@ const authSlice = createSlice({
             state.loading = true;
             state.error = null;
         },
-        loginSuccess(state, action: PayloadAction<{ user: User; token: string }>) {
+        loginSuccess(state, action: PayloadAction<{ accessToken: string }>) {
             console.log('Redux loginSuccess payload:', action.payload); // Debug log
-            state.user = action.payload.user;
-            state.token = action.payload.token;
+            state.token = action.payload.accessToken;
             state.loading = false;
-            localStorage.setItem('token', action.payload.token);
+            localStorage.setItem('token', action.payload.accessToken);
         },
         loginFailure(state, action: PayloadAction<string>) {
             console.error('Redux loginFailure:', action.payload); // Debug log
