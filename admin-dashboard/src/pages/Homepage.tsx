@@ -7,7 +7,7 @@ const HomePage = () => {
   return (
     <div className="min-h-screen flex flex-col bg-black">
       <header className="bg-black py-4 px-6 flex justify-between items-center">
-        <Logo />
+        <Logo variant="sidebar" />
         <div className="flex items-center space-x-4">
           <button className="text-white hover:text-supamenu-orange">
             <Search size={20} />
@@ -16,7 +16,6 @@ const HomePage = () => {
             <Bell size={20} />
           </button>
           <div className="flex items-center">
-            <span className="text-white mr-2 hidden md:inline">Jacques Kagabo</span>
             <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
               <User size={16} className="text-gray-600" />
             </div>

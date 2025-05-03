@@ -32,12 +32,14 @@ const authSlice = createSlice({
             state.error = null;
         },
         loginSuccess(state, action: PayloadAction<{ user: User; token: string }>) {
+            console.log('Redux loginSuccess payload:', action.payload); // Debug log
             state.user = action.payload.user;
             state.token = action.payload.token;
             state.loading = false;
             localStorage.setItem('token', action.payload.token);
         },
         loginFailure(state, action: PayloadAction<string>) {
+            console.error('Redux loginFailure:', action.payload); // Debug log
             state.loading = false;
             state.error = action.payload;
         },
@@ -70,4 +72,5 @@ export const {
     signupFailure,
     logout,
 } = authSlice.actions;
+
 export default authSlice.reducer;

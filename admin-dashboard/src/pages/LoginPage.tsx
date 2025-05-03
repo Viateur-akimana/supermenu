@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import AuthLayout from "../components/AuthLayout";
@@ -15,7 +15,7 @@ const LoginPage = () => {
   });
 
   const dispatch = useDispatch();
-  const { loading, error } = useSelector((state: RootState) => state.auth);
+  const { loading, error, token } = useSelector((state: RootState) => state.auth);
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -25,18 +25,34 @@ const LoginPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.email || !formData.password) {
+      dispatch(loginFailure('Please enter both email and password'));
+      toast.error('Please enter both email and password');
+      return;
+    }
+
     dispatch(loginStart());
     try {
+      console.log('Attempting login with:', formData);
       const response = await login(formData);
-      dispatch(loginSuccess({ user: response.user, token: response.token }));
+      console.log('Login service response:', response);
+
+      dispatch(loginSuccess({
+        user: response.user,
+        token: response.token
+      }));
+
+      localStorage.setItem("token", response.token);
       toast.success("Login successful!");
-      navigate("/dashboard");
+      navigate("/create-restaurant");
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || "Login failed";
+      console.error('Login page error:', error);
+      const errorMessage = error.message || "Login failed";
       dispatch(loginFailure(errorMessage));
       toast.error(errorMessage);
     }
   };
+
 
   const handleReset = () => {
     toast.info("Password reset link sent to your email");

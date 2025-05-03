@@ -119,7 +119,7 @@ const RestaurantInformation = ({
           <label className="block text-sm font-medium mb-1">Contacts number @ Restaurant</label>
           <div className="flex">
             <span className="inline-flex items-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-gray-500">
-              +250
+              +25
             </span>
             <Input
               id="contactNumber"
@@ -137,7 +137,7 @@ const RestaurantInformation = ({
 
           <div className="flex">
             <span className="inline-flex items-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-gray-500">
-              +250
+              +25
             </span>
             <Input
               id="ownerPhone"

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Logo from "../components/Logo";
 import { Search, Bell, User } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -7,9 +7,48 @@ import RestaurantTypeTimings from "../components/restaurant/RestaurantTypeTiming
 import CreateMenu from "../components/restaurant/CreateMenu";
 import { toast } from "sonner";
 import { useDispatch, useSelector } from "react-redux";
-import { createRestaurantFailure, createRestaurantStart, createRestaurantSuccess } from "@/redux/slices/restaurantSlice";
+import { createRestaurantStart, createRestaurantSuccess, createRestaurantFailure, clearError } from "@/redux/slices/restaurantSlice";
 import { createRestaurant } from "@/api/services/restaurantService";
 import { RootState } from "@/redux/store";
+
+enum MenuCategory {
+  DRINK = "DRINK",
+  STARTER = "STARTER",
+  APPETIZER = "APPETIZER",
+  DESSERT = "DESSERT",
+  MAIN = "MAIN",
+}
+
+enum RestaurantType {
+  RESTAURANT = "RESTAURANT",
+  PUB = "PUB",
+  HOTEL = "HOTEL",
+  COFFEE_SHOP = "COFFEE_SHOP",
+  OTHER = "OTHER",
+}
+
+enum RestaurantCuisineType {
+  AFRICAN = "AFRICAN",
+  EUROPEAN = "EUROPEAN",
+  ASIAN = "ASIAN",
+  MEDITERRANEAN = "MEDITERRANEAN",
+  MIDDLE_EASTERN = "MIDDLE_EASTERN",
+  OTHER = "OTHER",
+}
+
+interface OpeningHours {
+  from: string;
+  to: string;
+}
+
+interface MenuItem {
+  id: string;
+  name: string;
+  price: string;
+  description: string;
+  category: MenuCategory;
+  image?: File;
+}
 
 interface RestaurantData {
   name: string;
@@ -19,23 +58,11 @@ interface RestaurantData {
   ownerName: string;
   ownerEmail: string;
   ownerPhone: string;
-  restaurantType: string;
-  cuisineType: string;
-  openingHours: {
-    from: string;
-    to: string;
-  };
+  restaurantType: RestaurantType;
+  cuisineType: RestaurantCuisineType;
+  openingHours: OpeningHours;
   images: File[];
   menuItems: MenuItem[];
-}
-
-export interface MenuItem {
-  id: string;
-  name: string;
-  price: string;
-  description: string;
-  category: string;
-  image?: File;
 }
 
 const CreateRestaurantPage = () => {
@@ -48,8 +75,8 @@ const CreateRestaurantPage = () => {
     ownerName: "",
     ownerEmail: "",
     ownerPhone: "",
-    restaurantType: "",
-    cuisineType: "",
+    restaurantType: RestaurantType.RESTAURANT,
+    cuisineType: RestaurantCuisineType.AFRICAN,
     openingHours: {
       from: "14:00",
       to: "02:00",
@@ -60,31 +87,96 @@ const CreateRestaurantPage = () => {
 
   const dispatch = useDispatch();
   const { loading, error } = useSelector((state: RootState) => state.restaurant);
+  const { token } = useSelector((state: RootState) => state.auth);
   const navigate = useNavigate();
+  useEffect(() => {
+    if (!token) {
+      toast.error("Please login first");
+      navigate("/login");
+      return;
+    }
+  }, [token, navigate]);
 
   const updateRestaurantData = (data: Partial<RestaurantData>) => {
     setRestaurantData((prev) => ({ ...prev, ...data }));
+    if (error) {
+      dispatch(clearError());
+    }
+  };
+
+  const validateStep = (): boolean => {
+    if (currentStep === 1) {
+      if (!restaurantData.name.trim() || !restaurantData.location.trim() || !restaurantData.contactNumber.trim() ||
+        !restaurantData.ownerName.trim() || !restaurantData.ownerEmail.trim() || !restaurantData.ownerPhone.trim()) {
+        toast.error("All fields in Restaurant Information are required");
+        return false;
+      }
+      if (restaurantData.location.length < 5 || restaurantData.location.length > 20) {
+        toast.error("Location must be between 5 and 20 characters");
+        return false;
+      }
+      if (!restaurantData.ownerName.trim() || restaurantData.ownerName.length < 3 || restaurantData.ownerName.length > 50) {
+        toast.error("Owner name must be between 3 and 50 characters");
+        return false;
+      }
+      // Basic email validation (more strict validation could be added)
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(restaurantData.ownerEmail)) {
+        toast.error("Invalid email format");
+        return false;
+      }
+      // Basic Rwandan phone validation (starts with +250 or 0, followed by 9 digits)
+      const phoneRegex = /^(?:\+250|0)?[7-9][0-9]{8}$/;
+      if (!phoneRegex.test(restaurantData.contactNumber) || !phoneRegex.test(restaurantData.ownerPhone)) {
+        toast.error("Invalid Rwandan phone number format");
+        return false;
+      }
+    }
+    if (currentStep === 2) {
+      if (!restaurantData.restaurantType || !restaurantData.cuisineType || !restaurantData.openingHours.from || !restaurantData.openingHours.to) {
+        toast.error("All fields in Restaurant Type & Timings are required");
+        return false;
+      }
+    }
+    return true;
   };
 
   const goToNextStep = () => {
-    setCurrentStep((prev) => Math.min(prev + 1, 3));
+    if (validateStep()) {
+      setCurrentStep((prev) => Math.min(prev + 1, 3));
+      if (error) {
+        dispatch(clearError());
+      }
+    }
   };
 
   const goToPrevStep = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
+    if (error) {
+      dispatch(clearError());
+    }
   };
-
   const handleSubmit = async () => {
+    if (!validateStep()) return;
+
     dispatch(createRestaurantStart());
     try {
       const response = await createRestaurant(restaurantData);
-      dispatch(createRestaurantSuccess(response.restaurant));
+      dispatch(createRestaurantSuccess(response));
       toast.success("Restaurant created successfully!");
-      navigate("/dashboard");
+      navigate("/restaurant-dashboard");
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || "Failed to create restaurant";
+      // Handle 401 Unauthorized specifically
+      if (error.status === 401) {
+        toast.error("Session expired. Please login again.");
+        navigate("/login");
+        return;
+      }
+
+      const errorMessage = error.message || "Failed to create restaurant";
+      const errorDetails = error.details || {};
       dispatch(createRestaurantFailure(errorMessage));
-      toast.error(errorMessage);
+      toast.error(`${errorMessage}${Object.keys(errorDetails).length ? `: ${JSON.stringify(errorDetails)}` : ''}`);
     }
   };
 
@@ -92,7 +184,7 @@ const CreateRestaurantPage = () => {
     <div className="min-h-screen flex flex-col bg-white">
       <header className="bg-black py-4 px-6 flex justify-between items-center">
         <Link to="/">
-          <Logo />
+          <Logo variant="sidebar" />
         </Link>
         <div className="flex items-center space-x-4">
           <button className="text-white hover:text-supamenu-orange">
@@ -115,12 +207,10 @@ const CreateRestaurantPage = () => {
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h2 className="font-semibold text-lg mb-4">1. Create your restaurant profile</h2>
             <div
-              className={`flex items-start mb-4 ${currentStep === 1 ? "border-l-4 border-supamenu-orange pl-4" : "pl-[20px]"
-                }`}
+              className={`flex items-start mb-4 ${currentStep === 1 ? "border-l-4 border-supamenu-orange pl-4" : "pl-[20px]"}`}
             >
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 ${currentStep === 1 ? "bg-supamenu-orange text-white" : "bg-gray-200"
-                  }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 ${currentStep === 1 ? "bg-supamenu-orange text-white" : "bg-gray-200"}`}
               >
                 1
               </div>
@@ -131,12 +221,10 @@ const CreateRestaurantPage = () => {
             </div>
 
             <div
-              className={`flex items-start mb-4 ${currentStep === 2 ? "border-l-4 border-supamenu-orange pl-4" : "pl-[20px]"
-                }`}
+              className={`flex items-start mb-4 ${currentStep === 2 ? "border-l-4 border-supamenu-orange pl-4" : "pl-[20px]"}`}
             >
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 ${currentStep === 2 ? "bg-supamenu-orange text-white" : "bg-gray-200"
-                  }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 ${currentStep === 2 ? "bg-supamenu-orange text-white" : "bg-gray-200"}`}
               >
                 2
               </div>
@@ -147,12 +235,10 @@ const CreateRestaurantPage = () => {
             </div>
 
             <div
-              className={`flex items-start ${currentStep === 3 ? "border-l-4 border-supamenu-orange pl-4" : "pl-[20px]"
-                }`}
+              className={`flex items-start ${currentStep === 3 ? "border-l-4 border-supamenu-orange pl-4" : "pl-[20px]"}`}
             >
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 ${currentStep === 3 ? "bg-supamenu-orange text-white" : "bg-gray-200"
-                  }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 ${currentStep === 3 ? "bg-supamenu-orange text-white" : "bg-gray-200"}`}
               >
                 3
               </div>
