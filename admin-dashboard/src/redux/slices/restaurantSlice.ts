@@ -43,7 +43,6 @@ interface Restaurant {
     id: string;
     name: string;
     location: string;
-    completeName: string;
     contactNumber: string;
     ownerName: string;
     ownerEmail: string;

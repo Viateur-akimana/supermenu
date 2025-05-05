@@ -1,9 +1,16 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
+import api from "@/api/apiClient";
+import { toast } from "sonner";
 
 const OverviewContent = () => {
+  const [restaurantCount, setRestaurantCount] = useState<number>(0);
+  const [menuCount, setMenuCount] = useState<number>(0);
+  const [orderCount, setOrderCount] = useState<number>(0);
+  const [restaurantData, setRestaurantData] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
   const chartData = [
     { time: 0, today: 20, week: 15, month: 25 },
     { time: 1, today: 25, week: 20, month: 30 },
@@ -32,55 +39,64 @@ const OverviewContent = () => {
 
   const [activeFilter, setActiveFilter] = useState("today");
 
-  const restaurantData = [
-    {
-      name: "Restaurants",
-      items: [
-        { name: "Sole Luna", sales: "46000" },
-        { name: "Soy", sales: "12000" },
-      ],
-    },
-    {
-      name: "Hotels",
-      items: [
-        { name: "Park Inn", sales: "4238" },
-        { name: "M Hotel", sales: "1005" },
-      ],
-    },
-    {
-      name: "Pubs",
-      items: [
-        { name: "Sundowner", sales: "300" },
-        { name: "Gate N10", sales: "150" },
-      ],
-    },
-    {
-      name: "Cafes",
-      items: [
-        { name: "Aroma", sales: "2238" },
-        { name: "Patisserie Royale", sales: "500" },
-      ],
-    },
-  ];
+  // Fetch data from the backend
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch restaurants
+        const restaurantResponse = await api.get("/restaurants", {
+          params: { page: 0, size: 100 }, // Adjust pagination as needed
+        });
+        const restaurants = restaurantResponse.data.data;
+        setRestaurantCount(restaurants.length);
+        setRestaurantData(restaurants);
+        let totalMenus = 0;
+        for (const restaurant of restaurants) {
+          const menuResponse = await api.get(`/restaurants/${restaurant.id}/menu-items`, {
+            params: { page: 0, size: 100 },
+          });
+          totalMenus += menuResponse.data.data.length;
+        }
+        setMenuCount(totalMenus);
+        setOrderCount(0);
+      } catch (error: any) {
+        console.error("Error fetching data:", error);
+        toast.error("Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-normal text-gray-500">Clients</CardTitle>
+            <CardTitle className="text-sm font-normal text-gray-500">Restaurants</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">60</p>
+            {loading ? (
+              <p>Loading...</p>
+            ) : (
+              <p className="text-3xl font-bold">{restaurantCount}</p>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-normal text-gray-500">Revenues (FRW)</CardTitle>
+            <CardTitle className="text-sm font-normal text-gray-500">Menus</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">38234000</p>
+            {loading ? (
+              <p>Loading...</p>
+            ) : (
+              <p className="text-3xl font-bold">{menuCount}</p>
+            )}
           </CardContent>
         </Card>
 
@@ -89,7 +105,11 @@ const OverviewContent = () => {
             <CardTitle className="text-sm font-normal text-gray-500">Orders</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">67569</p>
+            {loading ? (
+              <p>Loading...</p>
+            ) : (
+              <p className="text-3xl font-bold">{orderCount}</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -99,37 +119,7 @@ const OverviewContent = () => {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Today's trends</CardTitle>
-              <p className="text-sm text-gray-500">As of 25 May 2025, 09:41 PM</p>
-            </div>
-            <div className="flex space-x-4 text-sm">
-              <button
-                className={`flex items-center ${activeFilter === 'today' ? 'text-blue-500' : 'text-gray-500'}`}
-                onClick={() => setActiveFilter('today')}
-              >
-                <span className="w-3 h-3 rounded-full bg-blue-500 mr-2"></span>
-                Today
-              </button>
-              <button
-                className={`flex items-center ${activeFilter === 'week' ? 'text-gray-400' : 'text-gray-500'}`}
-                onClick={() => setActiveFilter('week')}
-              >
-                <span className="w-3 h-3 rounded-full bg-gray-300 mr-2"></span>
-                Week
-              </button>
-              <button
-                className={`flex items-center ${activeFilter === 'month' ? 'text-red-500' : 'text-gray-500'}`}
-                onClick={() => setActiveFilter('month')}
-              >
-                <span className="w-3 h-3 rounded-full bg-red-500 mr-2"></span>
-                Month
-              </button>
-              <button
-                className={`flex items-center ${activeFilter === 'year' ? 'text-green-500' : 'text-gray-500'}`}
-                onClick={() => setActiveFilter('year')}
-              >
-                <span className="w-3 h-3 rounded-full bg-gray-200 mr-2"></span>
-                Year
-              </button>
+              <p className="text-sm text-gray-500">As of {new Date().toLocaleString()}</p>
             </div>
           </div>
         </CardHeader>
@@ -160,30 +150,27 @@ const OverviewContent = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {restaurantData.map((category) => (
-          <Card key={category.name}>
-            <CardHeader className="pb-2 flex justify-between items-center">
-              <CardTitle>{category.name}</CardTitle>
-              <a href="#" className="text-sm text-supamenu-orange">View details</a>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-xs text-gray-500 mb-2">Sales</p>
-              {category.items.map((item) => (
-                <div key={item.name} className="flex justify-between items-center py-2">
-                  <span>{item.name}</span>
-                  <span className="text-gray-500">{item.sales}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ))}
+        {loading ? (
+          <p>Loading stats...</p>
+        ) : (
+          restaurantData.map((restaurant) => (
+            <Card key={restaurant.id}>
+              <CardHeader className="pb-2 flex justify-between items-center">
+                <CardTitle>{restaurant.name}</CardTitle>
+                <a href="#" className="text-sm text-supamenu-orange">View details</a>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <p className="text-xs text-gray-500 mb-2">Location: {restaurant.location}</p>
+                <p className="text-xs text-gray-500 mb-2">Contact: {restaurant.contactNumber}</p>
+                <p className="text-xs text-gray-500 mb-2">Cuisine: {restaurant.cuisineType}</p>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
-
-      {/* Create Section */}
       <Card>
         <CardHeader className="pb-2 flex justify-between items-center">
           <CardTitle>Create</CardTitle>
-          <a href="#" className="text-sm text-supamenu-orange">View all</a>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between mb-4">

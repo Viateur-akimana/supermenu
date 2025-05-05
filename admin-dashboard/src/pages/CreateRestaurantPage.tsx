@@ -10,6 +10,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { createRestaurantStart, createRestaurantSuccess, createRestaurantFailure, clearError } from "@/redux/slices/restaurantSlice";
 import { createRestaurant } from "@/api/services/restaurantService";
 import { RootState } from "@/redux/store";
+import { jwtDecode } from 'jwt-decode';
 
 enum MenuCategory {
   DRINK = "DRINK",
@@ -64,6 +65,10 @@ interface RestaurantData {
   menuItems: MenuItem[];
 }
 
+interface JwtPayload {
+  exp: number;
+}
+
 const CreateRestaurantPage = () => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [restaurantData, setRestaurantData] = useState<RestaurantData>({
@@ -84,16 +89,41 @@ const CreateRestaurantPage = () => {
   });
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { loading, error } = useSelector((state: RootState) => state.restaurant);
   const { token } = useSelector((state: RootState) => state.auth);
-  const navigate = useNavigate();
+
   useEffect(() => {
     if (!token) {
       toast.error("Please login first");
+      localStorage.removeItem('accessToken');
       navigate("/login");
       return;
     }
-  }, [token, navigate]);
+
+    try {
+      const decoded: JwtPayload = jwtDecode(token);
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (decoded.exp < currentTime) {
+        toast.error("Session expired. Please login again.");
+        localStorage.removeItem('accessToken');
+        dispatch({ type: 'auth/logout' });
+        navigate("/login");
+      }
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      toast.error("Invalid token. Please login again.");
+      localStorage.removeItem('accessToken');
+      dispatch({ type: 'auth/logout' });
+      navigate("/login");
+    }
+
+    // Ensure HTTPS
+    if (window.location.protocol !== 'https:') {
+      console.warn('This page is served over HTTP, which is insecure.');
+      toast.error('Insecure connection detected. Please use HTTPS.');
+    }
+  }, [token, navigate, dispatch]);
 
   const updateRestaurantData = (data: Partial<RestaurantData>) => {
     setRestaurantData((prev) => ({ ...prev, ...data }));
@@ -117,13 +147,11 @@ const CreateRestaurantPage = () => {
         toast.error("Owner name must be between 3 and 50 characters");
         return false;
       }
-      // Basic email validation (more strict validation could be added)
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(restaurantData.ownerEmail)) {
         toast.error("Invalid email format");
         return false;
       }
-      // Basic Rwandan phone validation (starts with +250 or 0, followed by 9 digits)
       const phoneRegex = /^(?:\+250|0)?[7-9][0-9]{8}$/;
       if (!phoneRegex.test(restaurantData.contactNumber) || !phoneRegex.test(restaurantData.ownerPhone)) {
         toast.error("Invalid Rwandan phone number format");
@@ -154,25 +182,49 @@ const CreateRestaurantPage = () => {
       dispatch(clearError());
     }
   };
+
   const handleSubmit = async () => {
     if (!validateStep()) return;
 
-    dispatch(createRestaurantStart());
+    if (!token) {
+      toast.error("No access token found. Please login again.");
+      localStorage.removeItem('accessToken');
+      dispatch({ type: 'auth/logout' });
+      navigate("/login");
+      return;
+    }
+
     try {
-      const response = await createRestaurant(restaurantData);
-      dispatch(createRestaurantSuccess(response));
-      toast.success("Restaurant created successfully!");
-      navigate("/restaurant-dashboard");
-    } catch (error: any) {
-      // Handle 401 Unauthorized specifically
-      if (error.status === 401) {
+      const decoded: JwtPayload = jwtDecode(token);
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (decoded.exp < currentTime) {
         toast.error("Session expired. Please login again.");
+        localStorage.removeItem('accessToken');
+        dispatch({ type: 'auth/logout' });
         navigate("/login");
         return;
       }
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      toast.error("Invalid token. Please login again.");
+      localStorage.removeItem('accessToken');
+      dispatch({ type: 'auth/logout' });
+      navigate("/login");
+      return;
+    }
 
+    dispatch(createRestaurantStart());
+    try {
+      console.log('Submitting restaurant data:', restaurantData);
+      const response = await createRestaurant(restaurantData);
+      console.log('Navigating to /restaurant-dashboard');
+      dispatch(createRestaurantSuccess(response));
+      toast.success("Restaurant created successfully");
+      navigate("/restaurant-dashboard");
+    } catch (error: any) {
+      console.error('Error creating restaurant:', error.response || error.message);
       const errorMessage = error.message || "Failed to create restaurant";
-      const errorDetails = error.details || {};
+      const errorDetails = error.response?.data || {};
       dispatch(createRestaurantFailure(errorMessage));
       toast.error(`${errorMessage}${Object.keys(errorDetails).length ? `: ${JSON.stringify(errorDetails)}` : ''}`);
     }

@@ -87,7 +87,7 @@ export const createRestaurant = async (data: {
         formData.append('ownerPhoneNumber', data.ownerPhone); // Change to match API expectation
         formData.append('restaurantType', data.restaurantType);
         formData.append('cuisineType', data.cuisineType);
-        
+
         // Format opening hours as a string instead of JSON
         const openingHoursString = `${data.openingHours.from}-${data.openingHours.to}`;
         formData.append('openingHours', openingHoursString);
@@ -96,13 +96,13 @@ export const createRestaurant = async (data: {
         if (data.images && data.images.length > 0) {
             formData.append('image', data.images[0]); // Use singular 'image' instead of 'images'
         }
-        
+
         // Update menu item format to use dot notation instead of bracket notation
         data.menuItems.forEach((item, index) => {
             formData.append(`menuItems[${index}].name`, item.name);
             formData.append(`menuItems[${index}].price`, item.price);
             formData.append(`menuItems[${index}].description`, item.description);
-            
+
             // Map your category to the expected API category format if needed
             const categoryMap: Record<string, string> = {
                 DRINK: 'DRINK',
@@ -110,7 +110,7 @@ export const createRestaurant = async (data: {
                 APPETIZER: 'APPETIZER',
                 MAIN: 'MAIN',
                 DESSERT: 'DESSERT',
-               
+
             };
             const apiCategory = categoryMap[item.category] || item.category;
             formData.append(`menuItems[${index}].category`, apiCategory);
@@ -138,96 +138,13 @@ export const createRestaurant = async (data: {
     }
 };
 
-export const updateRestaurant = async (id: string, data: Partial<RestaurantResponse>): Promise<RestaurantResponse> => {
+export const getRestaurants = async (): Promise<RestaurantResponse[]> => {
     try {
-        const formData = new FormData();
-
-        // Handle basic fields
-        if (data.name) formData.append('name', data.name);
-        if (data.location) formData.append('location', data.location);
-        if (data.contactNumber) formData.append('contactNumber', data.contactNumber);
-        if (data.ownerName) formData.append('ownerName', data.ownerName);
-        if (data.ownerEmail) formData.append('ownerEmail', data.ownerEmail);
-        if (data.ownerPhone) formData.append('ownerPhone', data.ownerPhone);
-        if (data.restaurantType) formData.append('restaurantType', data.restaurantType);
-        if (data.cuisineType) formData.append('cuisineType', data.cuisineType);
-
-        if (data.openingHours) {
-            formData.append('openingHours', JSON.stringify(data.openingHours));
-        }
-        if (data.images && Array.isArray(data.images)) {
-            data.images.forEach((image, index) => {
-                if (image instanceof File) {
-                    if (image.size > 5 * 1024 * 1024 || !image.type.startsWith('image/')) {
-                        throw new Error('Invalid image file: Size must be under 5MB and must be an image');
-                    }
-                    formData.append('images', image, `restaurant-image-${index}.${image.name.split('.').pop() || 'jpg'}`);
-                }
-            });
-        }
-
-        // Handle menu items with the same format as create
-        if (data.menuItems && Array.isArray(data.menuItems)) {
-            data.menuItems.forEach((item, index) => {
-                formData.append(`menuItems[${index}][name]`, item.name);
-                formData.append(`menuItems[${index}][price]`, item.price);
-                formData.append(`menuItems[${index}][description]`, item.description);
-                formData.append(`menuItems[${index}][category]`, item.category);
-                formData.append(`menuItems[${index}][id]`, item.id);
-
-                if (item.image && item.image instanceof File) {
-                    if (item.image.size > 5 * 1024 * 1024 || !item.image.type.startsWith('image/')) {
-                        throw new Error('Invalid menu item image: Size must be under 5MB and must be an image');
-                    }
-                    formData.append(`menuItems[${index}][image]`, item.image, `menu-item-${item.id}.${item.image.name.split('.').pop() || 'jpg'}`);
-                }
-            });
-        }
-
-        const response = await api.put(`/restaurants/${id}`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
-
-        if (!response.data || !response.data.id) {
-            throw new Error('Invalid response from server');
-        }
-        return response.data as RestaurantResponse;
+        const response = await api.get('/restaurants');
+        return response.data as RestaurantResponse[];
     } catch (error: any) {
         const apiError: ApiError = {
-            message: error.response?.data?.message || error.message || 'Failed to update restaurant',
-            status: error.response?.status || (error instanceof Error ? undefined : 500),
-            details: error.response?.data?.details || {}
-        };
-        throw apiError;
-    }
-};
-
-export const deleteRestaurant = async (id: string): Promise<void> => {
-    try {
-        const response = await api.delete(`/restaurants/${id}`);
-        if (response.status !== 200 && response.status !== 204) {
-            throw new Error('Failed to delete restaurant');
-        }
-    } catch (error: any) {
-        const apiError: ApiError = {
-            message: error.response?.data?.message || error.message || 'Failed to delete restaurant',
-            status: error.response?.status || (error instanceof Error ? undefined : 500),
-            details: error.response?.data?.details || {}
-        };
-        throw apiError;
-    }
-};
-
-export const getRestaurant = async (id: string): Promise<RestaurantResponse> => {
-    try {
-        const response = await api.get(`/restaurants/${id}`);
-        if (!response.data || !response.data.id) {
-            throw new Error('Invalid response from server');
-        }
-        return response.data as RestaurantResponse;
-    } catch (error: any) {
-        const apiError: ApiError = {
-            message: error.response?.data?.message || error.message || 'Failed to fetch restaurant',
+            message: error.response?.data?.message || error.message || 'Failed to fetch restaurants',
             status: error.response?.status || (error instanceof Error ? undefined : 500),
             details: error.response?.data?.details || {}
         };
